@@ -1,24 +1,34 @@
-const notificationService = require('../services/notification.service');
+const prisma = require('../utils/prisma.util');
 
+// GET /api/notifications
 const getNotifications = async (req, res) => {
-    try {
-        const notifications = await notificationService.getNotificationsForUser(req.user);
-        res.json({ success: true, data: notifications });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
+  try {
+    // Admin sees global notifications (userId: null), Members see specific ones
+    const userId = req.user.role === 'admin' ? null : req.user.id;
+    const notifications = await prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ success: true, data: notifications });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-const markNotificationRead = async (req, res) => {
-    try {
-        const notificationId = parseInt(req.params.id, 10);
-        if (isNaN(notificationId)) return res.status(400).json({ success: false, message: 'Invalid notification ID' });
-        
-        const notification = await notificationService.markNotificationRead(notificationId, req.user);
-        res.json({ success: true, data: notification });
-    } catch (err) {
-        res.status(400).json({ success: false, message: err.message });
-    }
+// PUT or PATCH /api/notifications/:id/read
+const markAsRead = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
+
+    const updated = await prisma.notification.update({
+      where: { id },
+      data: { isRead: true },
+    });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
 
-module.exports = { getNotifications, markNotificationRead };
+module.exports = { getNotifications, markAsRead };

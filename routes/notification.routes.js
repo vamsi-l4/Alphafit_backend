@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { getNotifications, markNotificationRead } = require('../controllers/notification.controller');
+const { getNotifications, markAsRead } = require('../controllers/notification.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 
 router.get('/', authenticate, getNotifications);
-router.patch('/:id/read', authenticate, markNotificationRead);
+router.put('/:id/read', authenticate, markAsRead);
+router.patch('/:id/read', authenticate, markAsRead); // Bulletproof fallback
 
 module.exports = router;
