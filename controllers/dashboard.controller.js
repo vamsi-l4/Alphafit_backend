@@ -4,21 +4,21 @@ const { getMembersExpiringIn } = require('../utils/expiry.util');
 // GET /api/dashboard/stats
 const getDashboardStats = async (req, res) => {
   try {
-    const [total, active, expired, pending, revenueResult] = await Promise.all([
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [total, active, expired, pending, revenueResult, monthlyRevenue, newMembersThisMonth] = await Promise.all([
       prisma.member.count(),
       prisma.member.count({ where: { status: 'ACTIVE' } }),
       prisma.member.count({ where: { status: 'EXPIRED' } }),
       prisma.member.count({ where: { status: 'PENDING' } }),
       prisma.payment.aggregate({ _sum: { amount: true } }),
+      prisma.payment.aggregate({
+        where: { paymentDate: { gte: startOfMonth } },
+        _sum: { amount: true },
+      }),
+      prisma.member.count({ where: { joinDate: { gte: startOfMonth } } }),
     ]);
-
-    // Monthly revenue (current month)
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyRevenue = await prisma.payment.aggregate({
-      where: { paymentDate: { gte: startOfMonth } },
-      _sum: { amount: true },
-    });
 
     res.json({
       success: true,
@@ -29,6 +29,7 @@ const getDashboardStats = async (req, res) => {
         pendingMembers: pending,
         totalRevenue: revenueResult._sum.amount || 0,
         monthlyRevenue: monthlyRevenue._sum.amount || 0,
+        newMembersThisMonth: newMembersThisMonth,
       },
     });
   } catch (err) {
