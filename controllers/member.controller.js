@@ -39,6 +39,25 @@ const addMember = async (req, res) => {
       },
     });
 
+    // 1. Notify Admin globally
+    await prisma.notification.create({
+      data: {
+        title: 'New Member Registered',
+        message: `${name} has been successfully registered for a ${duration}-day plan.`,
+        type: 'MEMBER_REGISTERED'
+      }
+    });
+
+    // 2. Notify the specific Member
+    await prisma.notification.create({
+      data: {
+        userId: member.id,
+        title: 'Welcome to Alpha Fit!',
+        message: `Hi ${name}, your membership is now active! Get ready to train like an Alpha.`,
+        type: 'WELCOME'
+      }
+    });
+
     const { password: _, ...memberData } = member;
     res.status(201).json({ success: true, data: memberData });
   } catch (err) {
