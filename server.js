@@ -48,7 +48,11 @@ cron.schedule('0 9 * * *', async () => {
     console.error('[CRON] Expiry sync failed:', err.message);
   }
 });
-
+// Inside your backend server.js file
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://alphafit-gym.vercel.app'],
+    credentials: true
+}));
 // Ensure DB is connected before starting the server
 const { connectWithRetry, disconnectPrisma } = require('./db');
 
