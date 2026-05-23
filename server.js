@@ -15,8 +15,12 @@ const { generateExpiryNotifications } = require('./services/membershipExpiry.ser
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    callback(null, true);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
@@ -48,11 +52,6 @@ cron.schedule('0 9 * * *', async () => {
     console.error('[CRON] Expiry sync failed:', err.message);
   }
 });
-// Inside your backend server.js file
-app.use(cors({
-    origin: ['http://localhost:5173', 'https://alphafit-gym.vercel.app'],
-    credentials: true
-}));
 // Ensure DB is connected before starting the server
 const { connectWithRetry, disconnectPrisma } = require('./db');
 
