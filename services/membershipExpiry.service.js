@@ -39,10 +39,10 @@ const buildClientMessage = (daysLeft, status) => {
     if (daysLeft === 1) {
         return 'Your membership expires in 1 day';
     }
-    if (daysLeft > 1 && daysLeft <= 3) {
+    if (daysLeft > 1 && daysLeft <= 2) {
         return `Your membership expires in ${daysLeft} days`;
     }
-    if (daysLeft > 3 && daysLeft <= 7) {
+    if (daysLeft > 2 && daysLeft <= 7) {
         return `Your membership expires in ${daysLeft} days`;
     }
     return null;
@@ -98,13 +98,13 @@ const generateExpiryNotifications = async () => {
     await updateExpiredMembers();
 
     const today = getStartOfDay(new Date());
-    const threeDays = getEndOfDay(new Date(today.getTime() + 3 * MS_PER_DAY));
+    const twoDays = getEndOfDay(new Date(today.getTime() + 2 * MS_PER_DAY));
     const sevenDays = getEndOfDay(new Date(today.getTime() + 7 * MS_PER_DAY));
     const tomorrow = getStartOfDay(new Date(today.getTime() + MS_PER_DAY));
-    const fourDays = getStartOfDay(new Date(today.getTime() + 4 * MS_PER_DAY));
+    const threeDays = getStartOfDay(new Date(today.getTime() + 3 * MS_PER_DAY));
 
-    const expiringIn3 = await getMembersWithinWindow(today, threeDays);
-    const expiringIn7 = await getMembersWithinWindow(fourDays, sevenDays);
+    const expiringIn2 = await getMembersWithinWindow(today, twoDays);
+    const expiringIn7 = await getMembersWithinWindow(threeDays, sevenDays);
     const recentlyExpired = await getRecentlyExpiredMembers(
         new Date(today.getTime() - 7 * MS_PER_DAY),
         today,
@@ -112,11 +112,11 @@ const generateExpiryNotifications = async () => {
 
     const promises = [];
 
-    expiringIn3.forEach((member) => {
+    expiringIn2.forEach((member) => {
         const daysLeft = getDaysLeft(member.expiryDate);
         const title = `Membership notice: ${member.name}`;
         const message = buildMemberMessage(member, daysLeft);
-        const type = daysLeft <= 3 ? 'expiring_3_days' : 'expiring_7_days';
+        const type = daysLeft <= 2 ? 'expiring_2_days' : 'expiring_7_days';
         promises.push(createNotification({ userId: member.id, title: 'Membership Expiry', message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
         promises.push(createNotification({ userId: null, title, message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
     });
@@ -173,12 +173,12 @@ const getMemberExpiryView = async (memberId) => {
 
 const getAdminExpirySummary = async () => {
     const today = getStartOfDay(new Date());
-    const threeDays = getEndOfDay(new Date(today.getTime() + 3 * MS_PER_DAY));
+    const twoDays = getEndOfDay(new Date(today.getTime() + 2 * MS_PER_DAY));
     const sevenDays = getEndOfDay(new Date(today.getTime() + 7 * MS_PER_DAY));
 
-    const expiringIn3 = await getMembersWithinWindow(today, threeDays);
+    const expiringIn2 = await getMembersWithinWindow(today, twoDays);
     const expiringIn7 = await getMembersWithinWindow(
-        getStartOfDay(new Date(today.getTime() + 4 * MS_PER_DAY)),
+        getStartOfDay(new Date(today.getTime() + 3 * MS_PER_DAY)),
         sevenDays,
     );
     const alreadyExpired = await getRecentlyExpiredMembers(
@@ -187,7 +187,7 @@ const getAdminExpirySummary = async () => {
     );
 
     return {
-        expiringIn3Days: expiringIn3.map((member) => formatNotificationObject(member, getDaysLeft(member.expiryDate))),
+        expiringIn2Days: expiringIn2.map((member) => formatNotificationObject(member, getDaysLeft(member.expiryDate))),
         expiringIn7Days: expiringIn7.map((member) => formatNotificationObject(member, getDaysLeft(member.expiryDate))),
         alreadyExpired: alreadyExpired.map((member) => formatNotificationObject(member, getDaysLeft(member.expiryDate))),
     };

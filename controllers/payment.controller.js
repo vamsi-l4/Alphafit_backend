@@ -24,6 +24,25 @@ const addPayment = async (req, res) => {
       include: { member: { select: { id: true, name: true, phone: true } } },
     });
 
+    // 1. Notify Admin globally
+    await prisma.notification.create({
+      data: {
+        title: 'Payment Received',
+        message: `₹${amount} received from ${member.name} via ${method || 'CASH'}.`,
+        type: 'PAYMENT_ADDED'
+      }
+    });
+
+    // 2. Notify the specific Member (Digital Receipt)
+    await prisma.notification.create({
+      data: {
+        userId: member.id,
+        title: 'Payment Confirmed',
+        message: `Your payment of ₹${amount} has been successfully recorded. Thank you!`,
+        type: 'PAYMENT_SUCCESS'
+      }
+    });
+
     res.status(201).json({ success: true, data: payment });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -89,6 +108,15 @@ const updatePayment = async (req, res) => {
       include: { member: { select: { id: true, name: true, phone: true } } },
     });
 
+    // Audit Trail for Admin
+    await prisma.notification.create({
+      data: {
+        title: 'Payment Updated',
+        message: `Payment #${id} was modified successfully.`,
+        type: 'PAYMENT_UPDATED'
+      }
+    });
+
     res.json({ success: true, data: updated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -105,6 +133,16 @@ const deletePayment = async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, message: 'Payment not found' });
 
     await prisma.payment.delete({ where: { id } });
+    
+    // Audit Trail for Admin
+    await prisma.notification.create({
+      data: {
+        title: 'Payment Deleted',
+        message: `Payment #${id} was permanently removed.`,
+        type: 'PAYMENT_DELETED'
+      }
+    });
+
     res.json({ success: true, message: 'Payment deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
