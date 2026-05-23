@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Local env files
+.env
+.env.*
+
+# Prisma generated files
+# (safe to ignore if generated during setup)
+prisma/generated/
+
+# Uploads (adjust if you want to keep committed files)
+uploads/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+

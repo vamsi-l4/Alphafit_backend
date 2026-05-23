@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  phone     String   @unique
+  password  String
+  name      String   @default("Admin")
+  createdAt DateTime @default(now())
+}
+
+model Member {
+  id            Int            @id @default(autoincrement())
+  name          String
+  phone         String         @unique
+  password      String
+  joinDate      DateTime       @default(now())
+  planDuration  Int // in days
+  expiryDate    DateTime
+  status        Status         @default(PENDING)
+  photo         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  payments      Payment[]
+  favorites     Favorite[]
+  logs          WorkoutLog[]
+  notifications Notification[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  muscles   Muscle[]
+}
+
+model Muscle {
+  id         Int         @id @default(autoincrement())
+  name       String
+  categoryId Int
+  category   Category    @relation(fields: [categoryId], references: [id])
+  subMuscles SubMuscle[]
+
+  @@unique([name, categoryId], name: "unique_muscle_per_category")
+}
+
+model SubMuscle {
+  id        Int        @id @default(autoincrement())
+  name      String
+  muscleId  Int
+  muscle    Muscle     @relation(fields: [muscleId], references: [id])
+  exercises Exercise[]
+
+  @@unique([name, muscleId], name: "unique_submuscle_per_muscle")
+}
+
+model Exercise {
+  id          Int          @id @default(autoincrement())
+  name        String
+  equipment   String
+  steps       String
+  videoUrl    String
+  subMuscleId Int
+  subMuscle   SubMuscle    @relation(fields: [subMuscleId], references: [id])
+  favorites   Favorite[]
+  workoutLogs WorkoutLog[]
+}
+
+model Favorite {
+  id         Int      @id @default(autoincrement())
+  memberId   Int
+  exerciseId Int
+  member     Member   @relation(fields: [memberId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@unique([memberId, exerciseId])
+}
+
+model WorkoutLog {
+  id         Int      @id @default(autoincrement())
+  memberId   Int
+  exerciseId Int
+  date       DateTime @default(now())
+  member     Member   @relation(fields: [memberId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+}
+
+model Payment {
+  id          Int           @id @default(autoincrement())
+  memberId    Int
+  amount      Float
+  paymentDate DateTime      @default(now())
+  method      PaymentMethod @default(CASH)
+  member      Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement()) @map("notification_id")
+  userId    Int?     @map("user_id")
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user Member? @relation(fields: [userId], references: [id])
+
+  @@map("Notification")
+}
+
+enum Status {
+  ACTIVE
+  EXPIRED
+  PENDING
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+}
