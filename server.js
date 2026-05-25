@@ -23,6 +23,8 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/media', express.static(path.join(__dirname, 'media'))); // Serves your new media folder
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads'))); // Vercel proxy tunnel support
+app.use('/api/media', express.static(path.join(__dirname, 'media'))); // Vercel proxy tunnel support
 
 // Routes
 app.use('/api/auth', authRoutes);
