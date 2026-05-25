@@ -21,12 +21,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/media', express.static(path.join(__dirname, 'media'))); // Serves your new media folder
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/workout', require('./routes/workout.routes'));
+app.use('/api/workout/v2', require('./routes/workoutV2.routes'));
 app.use('/api', paymentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);

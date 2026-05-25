@@ -125,3 +125,17 @@ enum PaymentMethod {
   CASH
   UPI
 }
+
+model Workout {
+  id           Int      @id @default(autoincrement())
+  name         String
+  category     String
+  description  String?
+  sets         String?
+  reps         String?
+  restTime     String?
+  difficulty   String?
+  videoUrl     String?
+  thumbnailUrl String?
+  createdAt    DateTime @default(now())
+}
