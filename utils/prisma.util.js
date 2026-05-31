@@ -3,6 +3,9 @@
 // requires a prisma:// URL instead of this app's postgresql:// DATABASE_URL.
 process.env.PRISMA_CLIENT_ENGINE_TYPE = 'library';
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first'); // Fixes Neon DB connection timeouts on networks with broken IPv6
+
 const { PrismaClient } = require('@prisma/client');
 
 // Production-ready Prisma client wrapper
@@ -10,10 +13,19 @@ const { PrismaClient } = require('@prisma/client');
 // - Exposes connect/disconnect helpers
 // - Registers graceful shutdown handlers
 
-const MAX_RETRIES = parseInt(process.env.PRISMA_CONNECT_RETRIES || '5', 10);
-const RETRY_DELAY_MS = parseInt(process.env.PRISMA_RETRY_DELAY_MS || '2000', 10);
+const MAX_RETRIES = parseInt(process.env.PRISMA_CONNECT_RETRIES || '10', 10);
+const RETRY_DELAY_MS = parseInt(process.env.PRISMA_RETRY_DELAY_MS || '3000', 10);
 
-const prisma = new PrismaClient({ log: ['warn', 'error'] });
+// Dynamically inject a longer connection timeout for Neon to prevent P1001 errors
+let dbUrl = process.env.DATABASE_URL;
+if (dbUrl && dbUrl.includes('neon.tech') && !dbUrl.includes('connect_timeout')) {
+    dbUrl += dbUrl.includes('?') ? '&connect_timeout=30' : '?connect_timeout=30';
+}
+
+const prisma = new PrismaClient({ 
+    datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
+    log: ['warn', 'error'] 
+});
 
 async function connectWithRetry(retries = MAX_RETRIES) {
     let attempt = 0;
@@ -25,6 +37,9 @@ async function connectWithRetry(retries = MAX_RETRIES) {
         } catch (err) {
             attempt += 1;
             console.error(`[Prisma] Connection attempt ${attempt} failed: ${err.message}`);
+            if (err.message.includes("Can't reach database server")) {
+                console.log(`[Prisma] ⏳ Hint: Your Neon serverless database is likely waking up from sleep. Waiting to retry...`);
+            }
             if (attempt >= retries) {
                 console.error('[Prisma] Maximum connection attempts reached');
                 throw err;

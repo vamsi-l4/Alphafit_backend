@@ -1,4 +1,5 @@
 const prisma = require('../utils/prisma.util');
+const fs = require('fs');
 
 exports.getAllWorkouts = async (req, res, next) => {
     try {
@@ -15,7 +16,10 @@ exports.createWorkout = async (req, res, next) => {
     try {
         let thumbnailUrl = req.body.thumbnailUrl;
         if (req.file) {
-            thumbnailUrl = `/uploads/${req.file.filename}`;
+            // Convert the uploaded file into a Base64 string to store it permanently in the database!
+            const fileData = fs.readFileSync(req.file.path);
+            thumbnailUrl = `data:${req.file.mimetype};base64,${fileData.toString('base64')}`;
+            fs.unlinkSync(req.file.path); // Clean up the temporary disk file
         }
 
         const workout = await prisma.workout.create({
@@ -52,7 +56,10 @@ exports.updateWorkout = async (req, res, next) => {
         };
 
         if (req.file) {
-            updateData.thumbnailUrl = `/uploads/${req.file.filename}`;
+            // Convert the uploaded file into a Base64 string to store it permanently in the database!
+            const fileData = fs.readFileSync(req.file.path);
+            updateData.thumbnailUrl = `data:${req.file.mimetype};base64,${fileData.toString('base64')}`;
+            fs.unlinkSync(req.file.path); // Clean up the temporary disk file
         } else if (req.body.thumbnailUrl !== undefined) {
             updateData.thumbnailUrl = req.body.thumbnailUrl;
         }
