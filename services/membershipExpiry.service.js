@@ -97,46 +97,55 @@ const formatNotificationObject = (member, daysLeft) => ({
 const generateExpiryNotifications = async () => {
     await updateExpiredMembers();
 
-    const today = getStartOfDay(new Date());
-    const twoDays = getEndOfDay(new Date(today.getTime() + 2 * MS_PER_DAY));
-    const sevenDays = getEndOfDay(new Date(today.getTime() + 7 * MS_PER_DAY));
-    const tomorrow = getStartOfDay(new Date(today.getTime() + MS_PER_DAY));
-    const threeDays = getStartOfDay(new Date(today.getTime() + 3 * MS_PER_DAY));
+    const todayStart = getStartOfDay(new Date());
+    const todayEnd = getEndOfDay(new Date());
 
-    const expiringIn2 = await getMembersWithinWindow(today, twoDays);
-    const expiringIn7 = await getMembersWithinWindow(threeDays, sevenDays);
-    const recentlyExpired = await getRecentlyExpiredMembers(
-        new Date(today.getTime() - 7 * MS_PER_DAY),
-        today,
-    );
+    const twoDaysStart = new Date(todayStart.getTime() + 2 * MS_PER_DAY);
+    const twoDaysEnd = new Date(todayEnd.getTime() + 2 * MS_PER_DAY);
+
+    // Exactly 2 days before expiry (Only fires once)
+    const expiringIn2 = await prisma.member.findMany({
+        where: {
+            expiryDate: {
+                gte: twoDaysStart,
+                lte: twoDaysEnd,
+            },
+            status: { not: 'EXPIRED' },
+        },
+        select: { id: true, name: true, expiryDate: true, status: true },
+    });
+
+    // Exactly on the day of expiry (Only fires once)
+    const expiringToday = await prisma.member.findMany({
+        where: {
+            expiryDate: {
+                gte: todayStart,
+                lte: todayEnd,
+            }
+        },
+        select: { id: true, name: true, expiryDate: true, status: true },
+    });
 
     const promises = [];
 
     expiringIn2.forEach((member) => {
-        const daysLeft = getDaysLeft(member.expiryDate);
         const title = `Membership notice: ${member.name}`;
-        const message = buildMemberMessage(member, daysLeft);
-        const type = daysLeft <= 2 ? 'expiring_2_days' : 'expiring_7_days';
-        promises.push(createNotification({ userId: member.id, title: 'Membership Expiry', message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
-        promises.push(createNotification({ userId: null, title, message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
+        const messageAdmin = `${member.name} membership expires in 2 days`;
+        const messageMember = `Your membership expires in 2 days`;
+        const type = 'expiring_2_days';
+        
+        promises.push(createNotification({ userId: member.id, title: 'Membership Expiry', message: messageMember, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
+        promises.push(createNotification({ userId: null, title, message: messageAdmin, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
     });
 
-    expiringIn7.forEach((member) => {
-        const daysLeft = getDaysLeft(member.expiryDate);
-        const title = `Membership notice: ${member.name}`;
-        const message = buildMemberMessage(member, daysLeft);
-        const type = 'expiring_7_days';
-        promises.push(createNotification({ userId: member.id, title: 'Membership Expiry', message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
-        promises.push(createNotification({ userId: null, title, message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
-    });
-
-    recentlyExpired.forEach((member) => {
-        const daysLeft = getDaysLeft(member.expiryDate);
+    expiringToday.forEach((member) => {
         const title = `Membership expired: ${member.name}`;
-        const message = buildMemberMessage(member, daysLeft);
+        const messageAdmin = `${member.name} membership has expired today`;
+        const messageMember = `Your membership has expired today. Please renew.`;
         const type = 'expired';
-        promises.push(createNotification({ userId: member.id, title: 'Membership Expired', message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
-        promises.push(createNotification({ userId: null, title, message, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
+        
+        promises.push(createNotification({ userId: member.id, title: 'Membership Expired', message: messageMember, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
+        promises.push(createNotification({ userId: null, title, message: messageAdmin, type }).catch((e) => console.error('[expiry] createNotification error:', e.message)));
     });
 
     await Promise.allSettled(promises);
